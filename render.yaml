@@ -1,0 +1,68 @@
+# Render Blueprint - lets you create all three services at once via
+# "New > Blueprint" in the Render dashboard, pointed at this repo.
+# Env vars marked `sync: false` are secrets/deployment-specific values
+# Render will prompt you for during setup rather than storing here in
+# plaintext in the repo.
+#
+# This is a convenience starting point, not guaranteed pixel-perfect to
+# Render's current dashboard - if a field name has changed, the dashboard
+# will tell you; everything here can also be set up manually service by
+# service instead.
+services:
+  - type: web
+    name: support-ticket-ai
+    runtime: docker
+    plan: free
+    dockerfilePath: ./SupportTicketAI/Dockerfile
+    dockerContext: ./SupportTicketAI
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AUTO_RESOLVE_THRESHOLD
+        value: "0.9"
+
+  - type: web
+    name: support-ticket-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./SupportTicketSystem/Dockerfile
+    dockerContext: ./SupportTicketSystem
+    envVars:
+      # Your self-hosted SQL Server, reachable from the internet, e.g.:
+      # Server=tcp:your-host,1433;Database=SupportTicketDb;User Id=...;Password=...;TrustServerCertificate=True;
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      # Generate with e.g. `openssl rand -base64 48` - must be a real
+      # secret in production, not the placeholder value in appsettings.json.
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: SupportTicketSystem
+      - key: Jwt__Audience
+        value: SupportTicketUsers
+      - key: SeedAdmin__Email
+        sync: false
+      - key: SeedAdmin__Password
+        sync: false
+      # Fill in after the support-ticket-ai service is created and you
+      # have its public URL (e.g. https://support-ticket-ai.onrender.com).
+      - key: RagService__BaseUrl
+        sync: false
+      # Fill in after the frontend static site is created and you have
+      # its public URL, so CORS allows it.
+      - key: Cors__FrontendOrigin
+        sync: false
+
+  - type: web
+    name: support-ticket-frontend
+    runtime: static
+    buildCommand: cd support-ticket-frontend && npm install && npm run build
+    staticPublishPath: ./support-ticket-frontend/dist
+    envVars:
+      # Fill in after the backend service is created and you have its
+      # public URL - Vite bakes this in at BUILD time, so changing it
+      # later requires a rebuild/redeploy, not just an env var update.
+      - key: VITE_API_BASE_URL
+        sync: false

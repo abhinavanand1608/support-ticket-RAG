@@ -1,0 +1,132 @@
+import { apiSlice } from '../../app/api/apiSlice';
+
+// Endpoints wired to TicketController.cs (Phase 2 + Phase 3 Agent routes).
+export const ticketsApi = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    // POST /api/tickets - User role
+    createTicket: builder.mutation({
+      query: (body) => ({ url: '/tickets', method: 'POST', body }),
+      invalidatesTags: ['Ticket'],
+    }),
+
+    // GET /api/tickets/mine - User role
+    getMyTickets: builder.query({
+      query: () => '/tickets/mine',
+      providesTags: ['Ticket'],
+    }),
+
+    // GET /api/tickets/{id} - any authenticated role, ownership-checked
+    // server-side for Users.
+    getTicketById: builder.query({
+      query: (id) => `/tickets/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Ticket', id }],
+    }),
+
+    // GET /api/tickets/{id}/comments
+    getComments: builder.query({
+      query: (id) => `/tickets/${id}/comments`,
+      providesTags: (result, error, id) => [{ type: 'Comment', id }],
+    }),
+
+    // POST /api/tickets/{id}/comments - User/Agent roles
+    addComment: builder.mutation({
+      query: ({ id, content }) => ({
+        url: `/tickets/${id}/comments`,
+        method: 'POST',
+        body: { content },
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Comment', id }],
+    }),
+
+    // GET /api/tickets/queue - Agent role, unassigned tickets
+    getQueue: builder.query({
+      query: () => '/tickets/queue',
+      providesTags: ['Ticket'],
+    }),
+
+    // GET /api/tickets/assigned-to-me - Agent role
+    getAssignedToMe: builder.query({
+      query: () => '/tickets/assigned-to-me',
+      providesTags: ['Ticket'],
+    }),
+
+    // PUT /api/tickets/{id}/assign - Agent role
+    assignTicket: builder.mutation({
+      query: (id) => ({ url: `/tickets/${id}/assign`, method: 'PUT' }),
+      invalidatesTags: (result, error, id) => ['Ticket', { type: 'Ticket', id }],
+    }),
+
+    // PUT /api/tickets/{id}/status - Agent/Admin roles
+    updateTicketStatus: builder.mutation({
+      query: ({ id, status }) => ({
+        url: `/tickets/${id}/status`,
+        method: 'PUT',
+        body: { status },
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        'Ticket',
+        { type: 'Ticket', id },
+      ],
+    }),
+
+    // PUT /api/tickets/{id}/classification - Agent/Admin roles.
+    // category/priority are each optional - only send fields the caller
+    // actually wants to correct, matching the backend's "only touch what
+    // was sent" behavior.
+    updateTicketClassification: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/tickets/${id}/classification`,
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        'Ticket',
+        { type: 'Ticket', id },
+      ],
+    }),
+
+    // POST /api/tickets/{id}/suggested-reply - Agent/Admin roles.
+    // Modeled as a mutation (not a query) even though the first call
+    // behaves like a normal data fetch, because the backend itself
+    // decides whether to return a cached result or actually regenerate -
+    // this is a single "get-or-generate" action, not a passive read, and
+    // `regenerate: true` is how the "Regenerate" button forces a fresh
+    // call through the Python RAG service instead of reusing the cache.
+    getSuggestedReply: builder.mutation({
+      query: ({ id, regenerate = false }) => ({
+        url: `/tickets/${id}/suggested-reply${regenerate ? '?regenerate=true' : ''}`,
+        method: 'POST',
+      }),
+    }),
+
+    // PUT /api/tickets/{id}/auto-resolve - Agent/Admin roles.
+    // The one-click "Accept & Resolve" action: backend posts the cached
+    // suggested reply as a comment and sets status to Resolved in a
+    // single transaction. Invalidates both the ticket (status changed)
+    // and its comments (a new one was added) so the page reflects the
+    // resolution without a manual refresh.
+    autoResolveTicket: builder.mutation({
+      query: (id) => ({ url: `/tickets/${id}/auto-resolve`, method: 'PUT' }),
+      invalidatesTags: (result, error, id) => [
+        'Ticket',
+        { type: 'Ticket', id },
+        { type: 'Comment', id },
+      ],
+    }),
+  }),
+});
+
+export const {
+  useCreateTicketMutation,
+  useGetMyTicketsQuery,
+  useGetTicketByIdQuery,
+  useGetCommentsQuery,
+  useAddCommentMutation,
+  useGetQueueQuery,
+  useGetAssignedToMeQuery,
+  useAssignTicketMutation,
+  useUpdateTicketStatusMutation,
+  useUpdateTicketClassificationMutation,
+  useGetSuggestedReplyMutation,
+  useAutoResolveTicketMutation,
+} = ticketsApi;

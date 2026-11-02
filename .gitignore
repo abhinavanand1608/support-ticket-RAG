@@ -1,0 +1,34 @@
+# --- .NET (SupportTicketSystem) ---
+SupportTicketSystem/bin/
+SupportTicketSystem/obj/
+SupportTicketSystem/bin/verify/
+
+# --- Python (SupportTicketAI) ---
+SupportTicketAI/venv/
+SupportTicketAI/__pycache__/
+SupportTicketAI/**/__pycache__/
+SupportTicketAI/kb_data/
+SupportTicketAI/.env
+
+# --- Frontend (support-ticket-frontend) ---
+support-ticket-frontend/node_modules/
+support-ticket-frontend/dist/
+support-ticket-frontend/dist-ssr/
+support-ticket-frontend/.env
+support-ticket-frontend/*.local
+
+# --- Secrets (never commit real values) ---
+.env
+*.env
+!*.env.example
+
+# --- Editor / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.user
+
+# --- Devin workspace metadata ---
+.devin/
