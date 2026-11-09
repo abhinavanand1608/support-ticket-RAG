@@ -6,7 +6,10 @@ export const ticketsApi = apiSlice.injectEndpoints({
     // POST /api/tickets - User role
     createTicket: builder.mutation({
       query: (body) => ({ url: '/tickets', method: 'POST', body }),
-      invalidatesTags: ['Ticket'],
+      // 'Stats' too: a new ticket changes Total/Open counts on the
+      // admin dashboard - without this the stats card keeps showing
+      // the pre-creation numbers from RTK Query's cache.
+      invalidatesTags: ['Ticket', 'Stats'],
     }),
 
     // GET /api/tickets/mine - User role
@@ -81,6 +84,9 @@ export const ticketsApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: (result, error, { id }) => [
         'Ticket',
+        // Status changes move a ticket between Open/Closed buckets on
+        // the admin stats dashboard.
+        'Stats',
         { type: 'Ticket', id },
       ],
     }),
@@ -125,6 +131,7 @@ export const ticketsApi = apiSlice.injectEndpoints({
       query: (id) => ({ url: `/tickets/${id}/auto-resolve`, method: 'PUT' }),
       invalidatesTags: (result, error, id) => [
         'Ticket',
+        'Stats',
         { type: 'Ticket', id },
         { type: 'Comment', id },
       ],
