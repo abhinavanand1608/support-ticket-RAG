@@ -164,22 +164,31 @@ app.Run();
 // came from Render's dashboard (URI form) or was typed by hand locally
 // in the classic keyword/value form.
 static string NormalizePostgresConnectionString(string connectionString) {
-    if (!connectionString.StartsWith("postgres://") && !connectionString.StartsWith("postgresql://")) {
-        return connectionString;
+    NpgsqlConnectionStringBuilder builder;
+
+    if (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://")) {
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':', 2);
+
+        builder = new NpgsqlConnectionStringBuilder {
+            Host = uri.Host,
+            Port = uri.Port > 0 ? uri.Port : 5432,
+            Database = uri.AbsolutePath.TrimStart('/'),
+            Username = Uri.UnescapeDataString(userInfo[0]),
+            Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null,
+            // Render's managed Postgres requires an encrypted connection.
+            SslMode = SslMode.Require,
+        };
+    } else {
+        builder = new NpgsqlConnectionStringBuilder(connectionString);
     }
 
-    var uri = new Uri(connectionString);
-    var userInfo = uri.UserInfo.Split(':', 2);
-
-    var builder = new NpgsqlConnectionStringBuilder {
-        Host = uri.Host,
-        Port = uri.Port > 0 ? uri.Port : 5432,
-        Database = uri.AbsolutePath.TrimStart('/'),
-        Username = Uri.UnescapeDataString(userInfo[0]),
-        Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null,
-        // Render's managed Postgres requires an encrypted connection.
-        SslMode = SslMode.Require,
-    };
+    // Without this, EF Core exceptions show "Detail redacted as it may
+    // contain sensitive data" instead of the real Postgres error
+    // (SQLSTATE, constraint name, offending value) - which makes
+    // deploy-time failures undebuggable from logs alone. These
+    // exceptions only ever land in server logs, never API responses.
+    builder.IncludeErrorDetail = true;
 
     return builder.ToString();
 }
