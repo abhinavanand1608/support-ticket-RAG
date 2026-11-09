@@ -90,6 +90,66 @@ def add_chunks(kb_id: str, vectors: list[list[float]], metadatas: list[dict]) ->
         _save_kb(kb_id)
 
 
+def list_documents(kb_id: str) -> list[dict]:
+    """Groups the flat per-chunk metadata list by doc_id into one summary
+    row per ingested document - for an Admin's "what's in this KB" view,
+    not for retrieval, so chunk-level detail is collapsed into a count."""
+    with _lock:
+        _load_kb(kb_id)
+
+        docs: dict[str, dict] = {}
+        for meta in _metadata[kb_id]:
+            doc_id = meta["doc_id"]
+            if doc_id not in docs:
+                docs[doc_id] = {
+                    "doc_id": doc_id,
+                    "title": meta["title"],
+                    "chunk_count": 0,
+                    "created_at": meta.get("created_at"),
+                }
+            docs[doc_id]["chunk_count"] += 1
+
+        return list(docs.values())
+
+
+def remove_document(kb_id: str, doc_id: str) -> int:
+    """Removes every chunk belonging to doc_id from the KB. Returns the
+    number of chunks removed (0 if doc_id wasn't found).
+
+    FAISS's IndexFlatIP has no built-in "delete by id" - the standard
+    approach is to reconstruct every stored vector (IndexFlat keeps full,
+    uncompressed vectors specifically so this is possible), drop the ones
+    whose metadata matches doc_id, and rebuild a fresh index from what's
+    left. This is O(n) in the KB's total chunk count, which is fine here
+    since it only runs on an explicit admin delete, not on any hot path.
+    """
+    with _lock:
+        _load_kb(kb_id)
+
+        keep_indices = [
+            i for i, meta in enumerate(_metadata[kb_id]) if meta["doc_id"] != doc_id
+        ]
+        removed_count = len(_metadata[kb_id]) - len(keep_indices)
+        if removed_count == 0:
+            return 0
+
+        if keep_indices:
+            all_vectors = _indexes[kb_id].reconstruct_n(0, _indexes[kb_id].ntotal)
+            kept_vectors = all_vectors[keep_indices]
+        else:
+            kept_vectors = np.empty((0, EMBEDDING_DIMENSIONS), dtype="float32")
+
+        new_index = faiss.IndexFlatIP(EMBEDDING_DIMENSIONS)
+        if len(kept_vectors) > 0:
+            new_index.add(kept_vectors)
+
+        _indexes[kb_id] = new_index
+        _metadata[kb_id] = [_metadata[kb_id][i] for i in keep_indices]
+
+        _save_kb(kb_id)
+        return removed_count
+
+
 def search(kb_id: str, query_vector: list[float], top_k: int) -> list[dict]:
     with _lock:
         _load_kb(kb_id)

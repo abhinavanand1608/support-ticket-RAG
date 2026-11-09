@@ -8,7 +8,14 @@
   --color-primary-hover: #1d4ed8;
   --color-danger: #dc2626;
   --color-success: #16a34a;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.14);
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
   color-scheme: light;
 }
 
@@ -18,7 +25,12 @@
 
 body {
   margin: 0;
-  background: var(--color-bg);
+  /* A faint directional tint instead of a flat fill - reads as a little
+     more considered/"designed" than solid gray, without being loud
+     enough to compete with actual content. */
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.05), transparent 45%),
+    var(--color-bg);
   color: var(--color-text);
 }
 
@@ -26,23 +38,48 @@ a {
   color: var(--color-primary);
 }
 
+h1,
+h2,
+h3 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+}
+
 button {
   cursor: pointer;
   border: none;
   background: var(--color-primary);
   color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
   font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 button:hover:not(:disabled) {
   background: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 input,
@@ -74,16 +111,23 @@ label {
 }
 
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 2rem;
-  padding: 0.75rem 1.5rem;
-  background: var(--color-surface);
+  padding: 0.85rem 1.5rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
 }
 
 .app-header__brand {
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 1.05rem;
 }
 
 .app-nav {
@@ -93,13 +137,36 @@ label {
 }
 
 .app-nav a {
+  position: relative;
   text-decoration: none;
   color: var(--color-muted);
   font-weight: 500;
+  padding: 0.25rem 0;
+  transition: color 0.15s ease;
+}
+
+.app-nav a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 100%;
+  bottom: -0.2rem;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 999px;
+  transition: right 0.2s ease;
+}
+
+.app-nav a:hover {
+  color: var(--color-text);
 }
 
 .app-nav a.active {
   color: var(--color-primary);
+}
+
+.app-nav a.active::after {
+  right: 0;
 }
 
 .app-header__user {
@@ -128,18 +195,27 @@ label {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-bg);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.12), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(37, 99, 235, 0.08), transparent 40%),
+    var(--color-bg);
 }
 
 .auth-form {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 2rem;
-  width: 320px;
+  border-radius: var(--radius-lg);
+  padding: 2.25rem;
+  width: 340px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.1rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.auth-form h1 {
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.02em;
 }
 
 .auth-form__footer {
@@ -270,14 +346,15 @@ label {
   border-collapse: collapse;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .ticket-table th,
 .ticket-table td {
   text-align: left;
-  padding: 0.65rem 0.9rem;
+  padding: 0.75rem 0.9rem;
   border-bottom: 1px solid var(--color-border);
   font-size: 0.9rem;
 }
@@ -286,6 +363,17 @@ label {
   background: #f8fafc;
   color: var(--color-muted);
   font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ticket-table tbody tr {
+  transition: background-color 0.1s ease;
+}
+
+.ticket-table tbody tr:hover {
+  background: #f8fafc;
 }
 
 .ticket-table tbody tr:last-child td {
@@ -334,6 +422,11 @@ label {
 
 .ai-assist {
   margin: 1.5rem 0;
+  padding: 1.25rem 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .ai-assist__header {
@@ -421,37 +514,90 @@ label {
 
 .stats-cards {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 2rem;
 }
 
+/* A cycling accent per card (via the top bar + value color) gives a row
+   of otherwise-identical number widgets some visual rhythm, without
+   needing an icon for each one. */
 .stat-card {
+  --accent: var(--color-primary);
+  position: relative;
+  overflow: hidden;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
-  min-width: 120px;
+  border-radius: var(--radius-md);
+  padding: 1.35rem 1.6rem;
+  min-width: 130px;
   text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.stats-cards .stat-card:nth-child(6n + 1) {
+  --accent: #2563eb;
+}
+.stats-cards .stat-card:nth-child(6n + 2) {
+  --accent: #16a34a;
+}
+.stats-cards .stat-card:nth-child(6n + 3) {
+  --accent: #d97706;
+}
+.stats-cards .stat-card:nth-child(6n + 4) {
+  --accent: #9333ea;
+}
+.stats-cards .stat-card:nth-child(6n + 5) {
+  --accent: #dc2626;
+}
+.stats-cards .stat-card:nth-child(6n + 6) {
+  --accent: #0891b2;
 }
 
 .stat-card__value {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
 }
 
 .stat-card__label {
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.3rem;
 }
 
 /* Weekly insights (Phase 8) */
 
 .insights-summary {
-  background: var(--color-surface);
+  position: relative;
+  background: linear-gradient(135deg, #eff6ff, var(--color-surface) 55%);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 1rem 1.25rem;
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem 1.4rem;
   margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .insights-summary__meta {
@@ -498,9 +644,15 @@ label {
 }
 
 .breakdown-chart__bar {
-  background: var(--color-primary);
+  background: linear-gradient(90deg, var(--color-primary), #60a5fa);
   height: 100%;
   border-radius: 999px;
+  width: 0;
+  /* Bars are rendered with their final inline width immediately, so
+     without a transition they'd just appear full-length - animating
+     `width` here means they visibly grow into place instead, which
+     reads as a much more "alive" widget for very little cost. */
+  transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .breakdown-chart__count {
@@ -514,43 +666,98 @@ label {
   position: relative;
 }
 
+/* Icon-only ghost button, same footprint as a typical header bell icon -
+   a circular hit target rather than a bordered text button, so it reads
+   as a quick-access utility rather than competing with the nav links for
+   attention. */
 .notification-bell__trigger {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
   background: transparent;
-  color: inherit;
-  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  border: none;
+  border-radius: 999px;
+}
+
+/* `:not(:disabled)` isn't needed functionally (this button is never
+   disabled) - it's here to out-rank the global `button:hover:not(:disabled)`
+   rule's specificity, which otherwise wins and repaints the background
+   blue on hover without also updating `color`, leaving the bell's
+   `stroke="currentColor"` looking stuck dark against a blue background. */
+.notification-bell__trigger:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: var(--color-text);
+}
+
+.notification-bell__icon {
+  display: block;
+}
+
+/* Floating unread count, positioned over the icon's corner - the
+   standard "badge on an icon" convention, instead of an inline count
+   next to text. */
+.notification-bell__count {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.1rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-danger);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  border: 2px solid var(--color-surface);
 }
 
 .notification-bell__dropdown {
   position: absolute;
   right: 0;
-  top: calc(100% + 0.5rem);
-  width: 320px;
-  max-height: 400px;
+  top: calc(100% + 0.6rem);
+  width: 340px;
+  max-height: 420px;
   overflow-y: auto;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
   z-index: 20;
 }
 
 .notification-bell__header {
+  position: sticky;
+  top: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   font-weight: 600;
 }
 
-.notification-bell__header button {
+.notification-bell__mark-all {
   width: auto;
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 0.3rem 0.6rem;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.4rem;
+}
+
+.notification-bell__mark-all:hover {
+  background: transparent;
+  text-decoration: underline;
 }
 
 .notification-bell__list {
@@ -560,10 +767,14 @@ label {
 }
 
 .notification-item {
-  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
   font-size: 0.85rem;
+  transition: background-color 0.1s ease;
 }
 
 .notification-item:last-child {
@@ -578,18 +789,47 @@ label {
   background: #eff6ff;
 }
 
-.notification-item p {
-  margin: 0 0 0.25rem;
+.notification-item--unread:hover {
+  background: #e0ecfd;
 }
 
-.notification-item span {
+/* Small unread indicator dot, reserved space on every row (not just
+   unread ones) so read/unread rows stay aligned instead of text
+   jumping left/right depending on state. */
+.notification-item__dot {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.4rem;
+  border-radius: 999px;
+  background: var(--color-primary);
+  visibility: hidden;
+}
+
+.notification-item--unread .notification-item__dot {
+  visibility: visible;
+}
+
+.notification-item__body {
+  min-width: 0;
+}
+
+.notification-item__body p {
+  margin: 0 0 0.2rem;
+  line-height: 1.35;
+}
+
+.notification-item__time {
   color: var(--color-muted);
   font-size: 0.75rem;
 }
 
-.notification-bell .status-message {
-  padding: 1rem;
+.notification-bell__empty {
+  padding: 2rem 1rem;
   margin: 0;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.85rem;
 }
 
 /* Toasts (Phase 9) */
@@ -649,4 +889,26 @@ label {
   gap: 0.3rem;
   font-size: 0.85rem;
   color: var(--color-muted);
+}
+
+/* Scroll reveal (Reveal.jsx / useInView.js) */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
 }

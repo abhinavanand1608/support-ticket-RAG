@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useGetWeeklyInsightsMutation } from '../features/admin/adminApi';
 import { Loading, ErrorText } from '../components/StatusMessage';
 import { getErrorMessage } from '../utils/apiError';
+import Reveal from '../components/Reveal';
 
 // No charting library is added for this page - the stack doesn't already
 // depend on one (see package.json), and these are simple single-series
@@ -47,32 +48,50 @@ export default function AdminWeeklyInsightsPage() {
 
       {data && (
         <>
-          <div className="insights-summary">
-            <p>{data.summary}</p>
-            <span className="insights-summary__meta">
-              Generated {new Date(data.generatedAt).toLocaleString()}
-            </span>
-          </div>
+          <Reveal>
+            <div className="insights-summary">
+              <p>{data.summary}</p>
+              <span className="insights-summary__meta">
+                Generated {new Date(data.generatedAt).toLocaleString()}
+              </span>
+            </div>
+          </Reveal>
 
           <div className="stats-cards">
-            <StatCard label="Tickets Created" value={stats.totalCreated} />
-            <StatCard label="Resolved" value={stats.resolvedCount} />
-            <StatCard label="Still Open" value={stats.openCount} />
-            <StatCard
-              label="Avg Resolution"
-              value={
-                stats.averageResolutionHours != null
-                  ? `${stats.averageResolutionHours.toFixed(1)}h`
-                  : 'N/A'
-              }
-            />
-            <StatCard label="Auto-Resolved" value={stats.autoResolvedCount} />
-            <StatCard label="Manually Resolved" value={stats.manuallyResolvedCount} />
+            <Reveal delay={0}>
+              <StatCard label="Tickets Created" value={stats.totalCreated} />
+            </Reveal>
+            <Reveal delay={60}>
+              <StatCard label="Resolved" value={stats.resolvedCount} />
+            </Reveal>
+            <Reveal delay={120}>
+              <StatCard label="Still Open" value={stats.openCount} />
+            </Reveal>
+            <Reveal delay={180}>
+              <StatCard
+                label="Avg Resolution"
+                value={
+                  stats.averageResolutionHours != null
+                    ? `${stats.averageResolutionHours.toFixed(1)}h`
+                    : 'N/A'
+                }
+              />
+            </Reveal>
+            <Reveal delay={240}>
+              <StatCard label="Auto-Resolved" value={stats.autoResolvedCount} />
+            </Reveal>
+            <Reveal delay={300}>
+              <StatCard label="Manually Resolved" value={stats.manuallyResolvedCount} />
+            </Reveal>
           </div>
 
           <div className="insights-breakdowns">
-            <BreakdownChart title="By Category" data={stats.byCategory} />
-            <BreakdownChart title="By Priority" data={stats.byPriority} />
+            <Reveal delay={0}>
+              <BreakdownChart title="By Category" data={stats.byCategory} />
+            </Reveal>
+            <Reveal delay={100}>
+              <BreakdownChart title="By Priority" data={stats.byPriority} />
+            </Reveal>
           </div>
         </>
       )}

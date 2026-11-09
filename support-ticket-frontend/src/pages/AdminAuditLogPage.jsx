@@ -13,6 +13,7 @@ const ACTION_TYPES = [
   { value: 'TicketStatusChanged', label: 'Ticket Status Changed' },
   { value: 'UserRoleChanged', label: 'User Role Changed' },
   { value: 'UserDeactivated', label: 'User Deactivated' },
+  { value: 'UserReactivated', label: 'User Reactivated' },
 ];
 
 export default function AdminAuditLogPage() {

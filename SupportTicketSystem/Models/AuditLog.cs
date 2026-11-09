@@ -9,6 +9,7 @@ public static class AuditActions {
     public const string TicketStatusChanged = "TicketStatusChanged";
     public const string UserRoleChanged = "UserRoleChanged";
     public const string UserDeactivated = "UserDeactivated";
+    public const string UserReactivated = "UserReactivated";
 }
 
 // One consistent audit trail for every sensitive action in the app.

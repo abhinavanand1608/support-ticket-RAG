@@ -19,11 +19,13 @@ export const adminApi = apiSlice.injectEndpoints({
       invalidatesTags: ['User'],
     }),
 
-    // PUT /api/admin/users/{id}/deactivate
-    deactivateUser: builder.mutation({
-      query: (id) => ({
-        url: `/admin/users/${id}/deactivate`,
+    // PUT /api/admin/users/{id}/active - single toggle endpoint for both
+    // deactivating and reactivating (see AdminController.UpdateUserActiveStatus).
+    updateUserActiveStatus: builder.mutation({
+      query: ({ id, isActive }) => ({
+        url: `/admin/users/${id}/active`,
         method: 'PUT',
+        body: { isActive },
       }),
       invalidatesTags: ['User'],
     }),
@@ -65,7 +67,7 @@ export const adminApi = apiSlice.injectEndpoints({
 export const {
   useGetUsersQuery,
   useUpdateUserRoleMutation,
-  useDeactivateUserMutation,
+  useUpdateUserActiveStatusMutation,
   useGetTicketStatsQuery,
   useGetWeeklyInsightsMutation,
   useGetAuditLogQuery,

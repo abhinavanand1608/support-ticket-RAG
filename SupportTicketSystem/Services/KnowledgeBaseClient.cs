@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using SupportTicketSystem.DTOs;
 
 namespace SupportTicketSystem.Services;
 
@@ -56,4 +57,90 @@ public class KnowledgeBaseClient : IKnowledgeBaseClient {
         [JsonPropertyName("chunks_created")]
         public int ChunksCreated { get; set; }
     }
+
+    public async Task<List<KbDocumentDto>> ListDocumentsAsync(string kbId) {
+        try {
+            var response = await _httpClient.GetAsync($"/kb/documents?kb_id={Uri.EscapeDataString(kbId)}");
+
+            if (!response.IsSuccessStatusCode) {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new KnowledgeBaseIngestException(
+                    $"Knowledge base service returned {(int)response.StatusCode}: {errorBody}");
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<ListDocumentsResult>();
+            if (result == null) {
+                throw new KnowledgeBaseIngestException("Knowledge base service returned an unexpected response");
+            }
+
+            return result.Documents.Select(d => new KbDocumentDto {
+                DocId = d.DocId,
+                Title = d.Title,
+                ChunkCount = d.ChunkCount,
+                CreatedAt = d.CreatedAt,
+            }).ToList();
+        }
+        catch (HttpRequestException e) {
+            throw new KnowledgeBaseIngestException("Could not reach the knowledge base service", e);
+        }
+        catch (TaskCanceledException e) {
+            throw new KnowledgeBaseIngestException("Knowledge base service timed out", e);
+        }
+    }
+
+    public async Task<int> DeleteDocumentAsync(string kbId, string docId) {
+        try {
+            var response = await _httpClient.DeleteAsync(
+                $"/kb/documents/{Uri.EscapeDataString(docId)}?kb_id={Uri.EscapeDataString(kbId)}");
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound) {
+                throw new KnowledgeBaseDocumentNotFoundException(docId);
+            }
+
+            if (!response.IsSuccessStatusCode) {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new KnowledgeBaseIngestException(
+                    $"Knowledge base service returned {(int)response.StatusCode}: {errorBody}");
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<DeleteDocumentResult>();
+            return result?.ChunksRemoved ?? 0;
+        }
+        catch (HttpRequestException e) {
+            throw new KnowledgeBaseIngestException("Could not reach the knowledge base service", e);
+        }
+        catch (TaskCanceledException e) {
+            throw new KnowledgeBaseIngestException("Knowledge base service timed out", e);
+        }
+    }
+
+    private class ListDocumentsResult {
+        public List<DocumentResult> Documents { get; set; } = new();
+    }
+
+    private class DocumentResult {
+        [JsonPropertyName("doc_id")]
+        public string DocId { get; set; } = string.Empty;
+
+        public string Title { get; set; } = string.Empty;
+
+        [JsonPropertyName("chunk_count")]
+        public int ChunkCount { get; set; }
+
+        [JsonPropertyName("created_at")]
+        public DateTime? CreatedAt { get; set; }
+    }
+
+    private class DeleteDocumentResult {
+        [JsonPropertyName("chunks_removed")]
+        public int ChunksRemoved { get; set; }
+    }
+}
+
+// Distinct from KnowledgeBaseIngestException so the controller can map a
+// "no such document" 404 from Python into a 404 here too, rather than
+// the generic 502 used for every other failure mode.
+public class KnowledgeBaseDocumentNotFoundException : Exception {
+    public KnowledgeBaseDocumentNotFoundException(string docId)
+        : base($"Document '{docId}' was not found in the knowledge base.") { }
 }

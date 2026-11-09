@@ -12,9 +12,17 @@ from dotenv import load_dotenv
 import kb_store
 from chunking import chunk_text
 from embeddings import EmbeddingError, get_embedding
-from kb_models import IngestRequest, IngestResponse, RetrieveRequest, RetrieveResponse
+from kb_models import (
+    IngestRequest,
+    IngestResponse,
+    RetrieveRequest,
+    RetrieveResponse,
+    ListDocumentsResponse,
+    DeleteDocumentResponse,
+)
 from rag_models import GenerateRequest, GenerateResponse, Source
 from insights_models import SummarizeRequest, SummarizeResponse
+from datetime import datetime, timezone
 
 load_dotenv()
 
@@ -109,12 +117,18 @@ async def ingest(request: IngestRequest):
     except EmbeddingError as e:
         raise HTTPException(status_code=502, detail=str(e))
 
+    # Stamped once per ingest call (not per chunk) so every chunk from
+    # this upload shares the same timestamp - used by /kb/documents to
+    # show an Admin when each document was added.
+    created_at = datetime.now(timezone.utc).isoformat()
+
     metadatas = [
         {
             "doc_id": request.doc_id,
             "title": request.title,
             "chunk_index": i,
             "text": chunk,
+            "created_at": created_at,
         }
         for i, chunk in enumerate(chunks)
     ]
@@ -122,6 +136,19 @@ async def ingest(request: IngestRequest):
     kb_store.add_chunks(request.kb_id, vectors, metadatas)
 
     return IngestResponse(chunks_created=len(chunks))
+
+
+@app.get("/kb/documents", response_model=ListDocumentsResponse)
+async def list_kb_documents(kb_id: str):
+    return ListDocumentsResponse(documents=kb_store.list_documents(kb_id))
+
+
+@app.delete("/kb/documents/{doc_id}", response_model=DeleteDocumentResponse)
+async def delete_kb_document(doc_id: str, kb_id: str):
+    removed = kb_store.remove_document(kb_id, doc_id)
+    if removed == 0:
+        raise HTTPException(status_code=404, detail="Document not found in this knowledge base")
+    return DeleteDocumentResponse(chunks_removed=removed)
 
 
 @app.post("/kb/retrieve", response_model=RetrieveResponse)

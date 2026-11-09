@@ -1,7 +1,7 @@
 import { apiSlice } from '../../app/api/apiSlice';
 
-// Endpoint wired to KnowledgeBaseController.cs (Phase 6 KB ingestion).
-// Admin role only.
+// Endpoints wired to KnowledgeBaseController.cs (Phase 6 KB ingestion,
+// Phase 9 document list/delete). Admin role only.
 export const kbApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // POST /api/kb/upload - expects multipart/form-data (File, Title,
@@ -14,8 +14,28 @@ export const kbApi = apiSlice.injectEndpoints({
         method: 'POST',
         body: formData,
       }),
+      invalidatesTags: ['KbDocument'],
+    }),
+
+    // GET /api/kb/documents - one row per ingested document.
+    getDocuments: builder.query({
+      query: () => '/kb/documents',
+      providesTags: ['KbDocument'],
+    }),
+
+    // DELETE /api/kb/documents/{docId}
+    deleteDocument: builder.mutation({
+      query: (docId) => ({
+        url: `/kb/documents/${docId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['KbDocument'],
     }),
   }),
 });
 
-export const { useUploadDocumentMutation } = kbApi;
+export const {
+  useUploadDocumentMutation,
+  useGetDocumentsQuery,
+  useDeleteDocumentMutation,
+} = kbApi;

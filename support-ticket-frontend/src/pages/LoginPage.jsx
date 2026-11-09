@@ -7,6 +7,7 @@ import { parseUserFromToken } from '../features/auth/tokenUtils';
 import { getErrorMessage } from '../utils/apiError';
 import { roleHomePath } from '../features/auth/roleHomePath';
 import { ErrorText } from '../components/StatusMessage';
+import Reveal from '../components/Reveal';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,40 +31,42 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h1>Log in</h1>
+      <Reveal>
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <h1>Log in</h1>
 
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-          />
-        </label>
+          <label>
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+            />
+          </label>
 
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </label>
 
-        {error && <ErrorText>{getErrorMessage(error)}</ErrorText>}
+          {error && <ErrorText>{getErrorMessage(error)}</ErrorText>}
 
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Logging in...' : 'Log in'}
-        </button>
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Log in'}
+          </button>
 
-        <p className="auth-form__footer">
-          Don't have an account? <Link to="/register">Register</Link>
-        </p>
-      </form>
+          <p className="auth-form__footer">
+            Don't have an account? <Link to="/register">Register</Link>
+          </p>
+        </form>
+      </Reveal>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   useGetUsersQuery,
   useUpdateUserRoleMutation,
-  useDeactivateUserMutation,
+  useUpdateUserActiveStatusMutation,
 } from '../features/admin/adminApi';
 import { ROLES } from '../constants/roles';
 import { Loading, ErrorText } from '../components/StatusMessage';
@@ -14,8 +14,8 @@ export default function AdminUsersPage() {
   const { data: users, isLoading, error } = useGetUsersQuery();
   const [updateUserRole, { isLoading: isUpdatingRole, error: roleError }] =
     useUpdateUserRoleMutation();
-  const [deactivateUser, { isLoading: isDeactivating, error: deactivateError }] =
-    useDeactivateUserMutation();
+  const [updateActiveStatus, { isLoading: isUpdatingActiveStatus, error: activeStatusError }] =
+    useUpdateUserActiveStatusMutation();
 
   // Tracks which row's role dropdown is mid-change, so only that row shows
   // a disabled state instead of the whole table locking up.
@@ -32,15 +32,18 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleDeactivate(userId) {
-    if (!window.confirm('Deactivate this user? They will not be able to log in.')) {
+  async function handleToggleActive(userId, nextIsActive) {
+    if (
+      !nextIsActive &&
+      !window.confirm('Deactivate this user? They will not be able to log in.')
+    ) {
       return;
     }
     setPendingUserId(userId);
     try {
-      await deactivateUser(userId).unwrap();
+      await updateActiveStatus({ id: userId, isActive: nextIsActive }).unwrap();
     } catch {
-      // surfaced via deactivateError
+      // surfaced via activeStatusError
     } finally {
       setPendingUserId(null);
     }
@@ -53,7 +56,7 @@ export default function AdminUsersPage() {
       {isLoading && <Loading />}
       {error && <ErrorText>{getErrorMessage(error)}</ErrorText>}
       {roleError && <ErrorText>{getErrorMessage(roleError)}</ErrorText>}
-      {deactivateError && <ErrorText>{getErrorMessage(deactivateError)}</ErrorText>}
+      {activeStatusError && <ErrorText>{getErrorMessage(activeStatusError)}</ErrorText>}
 
       {users && users.length === 0 && (
         <p className="status-message">No users found.</p>
@@ -72,7 +75,7 @@ export default function AdminUsersPage() {
           <tbody>
             {users.map((u) => {
               const isRowBusy =
-                pendingUserId === u.id && (isUpdatingRole || isDeactivating);
+                pendingUserId === u.id && (isUpdatingRole || isUpdatingActiveStatus);
 
               return (
                 <tr key={u.id}>
@@ -98,10 +101,10 @@ export default function AdminUsersPage() {
                   <td>
                     <button
                       type="button"
-                      disabled={!u.isActive || isRowBusy}
-                      onClick={() => handleDeactivate(u.id)}
+                      disabled={isRowBusy}
+                      onClick={() => handleToggleActive(u.id, !u.isActive)}
                     >
-                      Deactivate
+                      {u.isActive ? 'Deactivate' : 'Reactivate'}
                     </button>
                   </td>
                 </tr>

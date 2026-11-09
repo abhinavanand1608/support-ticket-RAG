@@ -97,22 +97,37 @@ public class AdminController : ControllerBase {
         return Ok("User role updated successfully");
     }
 
-    [HttpPut("users/{id}/deactivate")]
-    public async Task<IActionResult> DeactivateUser(string id) {
+    // Single toggle endpoint for both directions, rather than separate
+    // deactivate/reactivate routes - deactivation is routinely a mistake
+    // or a temporary measure (wrong user clicked, someone's on leave),
+    // and without a way back short of a manual database edit, the admin
+    // UI can't fully undo its own actions. Both directions still get
+    // distinct audit actions (UserDeactivated/UserReactivated) so the
+    // trail reads naturally even though one endpoint handles both.
+    [HttpPut("users/{id}/active")]
+    public async Task<IActionResult> UpdateUserActiveStatus(string id, UpdateUserActiveStatusDto dto) {
         var user = await _userManager.FindByIdAsync(id);
 
         if(user == null) {
             return NotFound();
         }
 
-        user.IsActive = false;
+        // No-op requests (e.g. reactivating an already-active user)
+        // shouldn't add a misleading audit entry for an action that
+        // didn't actually change anything.
+        if (user.IsActive != dto.IsActive) {
+            user.IsActive = dto.IsActive;
 
-        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        _auditLogger.Log(AuditActions.UserDeactivated, adminId, id);
+            var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            _auditLogger.Log(
+                dto.IsActive ? AuditActions.UserReactivated : AuditActions.UserDeactivated,
+                adminId,
+                id);
 
-        await _userManager.UpdateAsync(user);
+            await _userManager.UpdateAsync(user);
+        }
 
-        return Ok("User deactivated successfully");
+        return Ok(dto.IsActive ? "User reactivated successfully" : "User deactivated successfully");
     }
 
     [HttpGet("tickets/stats")]
