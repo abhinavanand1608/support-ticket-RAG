@@ -133,7 +133,18 @@ using (var scope = app.Services.CreateScope()){
         };
 
         var result = await userManager.CreateAsync(newAdmin, adminPassword);
-        await userManager.AddToRoleAsync(newAdmin, "Admin");
+        if (result.Succeeded) {
+            await userManager.AddToRoleAsync(newAdmin, "Admin");
+        } else {
+            // CreateAsync can fail silently-ish (weak password, duplicate
+            // email race, etc.) - previously the result was ignored and
+            // AddToRoleAsync then crashed the whole app on an FK
+            // violation. Log the actual Identity errors instead so the
+            // cause is visible in deploy logs, and let the app keep
+            // running rather than crash-looping on every boot.
+            var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+            app.Logger.LogError("Seed admin creation failed for {Email}: {Errors}", adminEmail, errors);
+        }
     }
     
 }
