@@ -154,8 +154,30 @@ public class TicketController : ControllerBase {
             query = query.Where(t => t.Priority == priority);
         }
 
-        var tickets = await query.ToListAsync();
-        return Ok(tickets);
+        // Include() is required here (not optional): EF Core doesn't
+        // lazy-load navigation properties, so without it
+        // CreatedByUser/AssignedAgent would be null and every ticket
+        // would show a blank creator/assignee. Projecting to a DTO
+        // rather than returning the entity also avoids serializing the
+        // full ApplicationUser objects (and any cycles they could cause).
+        var tickets = await query
+            .Include(t => t.CreatedByUser)
+            .Include(t => t.AssignedAgent)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+
+        return Ok(tickets.Select(t => new TicketListItemDto {
+            Id = t.Id,
+            Title = t.Title,
+            Status = t.Status,
+            Priority = t.Priority,
+            Category = t.Category,
+            CreatedAt = t.CreatedAt,
+            UpdatedAt = t.UpdatedAt,
+            ResolvedAt = t.ResolvedAt,
+            CreatorEmail = t.CreatedByUser.Email ?? string.Empty,
+            AssigneeEmail = t.AssignedAgent?.Email,
+        }));
     }
 
     [HttpPut("{id}/status")]

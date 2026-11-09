@@ -38,6 +38,22 @@ export const ticketsApi = apiSlice.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [{ type: 'Comment', id }],
     }),
 
+    // GET /api/tickets?status=&priority= - Admin/Agent roles. Unlike the
+    // per-user lists, each row includes creatorEmail/assigneeEmail so an
+    // admin can see who filed a ticket and who's working on it.
+    getAllTickets: builder.query({
+      query: ({ status, priority } = {}) => {
+        const params = new URLSearchParams();
+        // status is numeric (enums serialize as numbers in this API -
+        // see StatusBadge's 0-3 mapping); '' means "no filter".
+        if (status !== undefined && status !== '') params.set('status', status);
+        if (priority) params.set('priority', priority);
+        const qs = params.toString();
+        return `/tickets${qs ? `?${qs}` : ''}`;
+      },
+      providesTags: ['Ticket'],
+    }),
+
     // GET /api/tickets/queue - Agent role, unassigned tickets
     getQueue: builder.query({
       query: () => '/tickets/queue',
@@ -119,6 +135,7 @@ export const ticketsApi = apiSlice.injectEndpoints({
 export const {
   useCreateTicketMutation,
   useGetMyTicketsQuery,
+  useGetAllTicketsQuery,
   useGetTicketByIdQuery,
   useGetCommentsQuery,
   useAddCommentMutation,

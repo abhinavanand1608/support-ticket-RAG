@@ -34,6 +34,7 @@ export default function Layout() {
           {user?.role === ROLES.ADMIN && (
             <>
               <NavLink to="/admin/users">Users</NavLink>
+              <NavLink to="/admin/tickets">Tickets</NavLink>
               <NavLink to="/admin/stats">Stats</NavLink>
               <NavLink to="/admin/kb-upload">Knowledge Base</NavLink>
               <NavLink to="/admin/insights">Weekly Insights</NavLink>

@@ -21,6 +21,7 @@ import AdminStatsPage from './pages/AdminStatsPage';
 import AdminKnowledgeBaseUploadPage from './pages/AdminKnowledgeBaseUploadPage';
 import AdminWeeklyInsightsPage from './pages/AdminWeeklyInsightsPage';
 import AdminAuditLogPage from './pages/AdminAuditLogPage';
+import AdminTicketsPage from './pages/AdminTicketsPage';
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
 
         <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin/tickets" element={<AdminTicketsPage />} />
           <Route path="/admin/stats" element={<AdminStatsPage />} />
           <Route path="/admin/kb-upload" element={<AdminKnowledgeBaseUploadPage />} />
           <Route path="/admin/insights" element={<AdminWeeklyInsightsPage />} />
