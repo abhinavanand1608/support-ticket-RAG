@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using SupportTicketSystem.Services;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,7 +70,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IAuditLogger, AuditLogger>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(NormalizePostgresConnectionString(
+                builder.Configuration.GetConnectionString("DefaultConnection")!)));
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
@@ -153,3 +155,31 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Render (and most managed Postgres hosts) hand out a connection string
+// as a `postgres://user:pass@host:port/dbname` URI, but Npgsql's native
+// format is semicolon-delimited `key=value` pairs, not a URI - so a URI
+// passed straight through would fail to parse. This converts one to the
+// other when needed, so the exact same env var value works whether it
+// came from Render's dashboard (URI form) or was typed by hand locally
+// in the classic keyword/value form.
+static string NormalizePostgresConnectionString(string connectionString) {
+    if (!connectionString.StartsWith("postgres://") && !connectionString.StartsWith("postgresql://")) {
+        return connectionString;
+    }
+
+    var uri = new Uri(connectionString);
+    var userInfo = uri.UserInfo.Split(':', 2);
+
+    var builder = new NpgsqlConnectionStringBuilder {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432,
+        Database = uri.AbsolutePath.TrimStart('/'),
+        Username = Uri.UnescapeDataString(userInfo[0]),
+        Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null,
+        // Render's managed Postgres requires an encrypted connection.
+        SslMode = SslMode.Require,
+    };
+
+    return builder.ToString();
+}

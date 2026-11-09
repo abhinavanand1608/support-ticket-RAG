@@ -8,6 +8,15 @@
 # Render's current dashboard - if a field name has changed, the dashboard
 # will tell you; everything here can also be set up manually service by
 # service instead.
+# Free managed Postgres - Render provisions this itself, no self-hosting
+# needed. `fromDatabase` below wires its connection string straight into
+# the backend service as an env var.
+databases:
+  - name: support-ticket-db
+    plan: free
+    databaseName: supportticketdb
+    user: supportticket
+
 services:
   - type: web
     name: support-ticket-ai
@@ -30,10 +39,14 @@ services:
     dockerfilePath: ./SupportTicketSystem/Dockerfile
     dockerContext: ./SupportTicketSystem
     envVars:
-      # Your self-hosted SQL Server, reachable from the internet, e.g.:
-      # Server=tcp:your-host,1433;Database=SupportTicketDb;User Id=...;Password=...;TrustServerCertificate=True;
+      # Render hands this out as a postgres:// URI - Program.cs's
+      # NormalizePostgresConnectionString() converts it to Npgsql's
+      # native key=value format automatically, so no manual reformatting
+      # is needed here.
       - key: ConnectionStrings__DefaultConnection
-        sync: false
+        fromDatabase:
+          name: support-ticket-db
+          property: connectionString
       # Generate with e.g. `openssl rand -base64 48` - must be a real
       # secret in production, not the placeholder value in appsettings.json.
       - key: Jwt__Key

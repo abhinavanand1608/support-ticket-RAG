@@ -28,7 +28,7 @@ flowchart LR
 
     subgraph Backend[".NET Backend (ASP.NET Core)"]
         API[REST API + JWT Auth]
-        DB[(SQL Server<br/>EF Core)]
+        DB[(PostgreSQL<br/>EF Core)]
     end
 
     subgraph AI["Python AI Service (FastAPI)"]
@@ -66,7 +66,7 @@ flowchart LR
 sequenceDiagram
     participant Agent
     participant API as .NET API
-    participant DB as SQL Server
+    participant DB as PostgreSQL
     participant AI as Python AI Service
     participant Vec as FAISS
     participant LLM as Groq
@@ -95,7 +95,7 @@ sequenceDiagram
 
 **Backend**
 - ASP.NET Core Web API (.NET)
-- Entity Framework Core + SQL Server (LocalDB for dev)
+- Entity Framework Core + PostgreSQL (via Npgsql)
 - ASP.NET Core Identity + JWT Bearer authentication
 - Role-based authorization (User / Agent / Admin)
 
@@ -125,7 +125,7 @@ sequenceDiagram
 
 ### Prerequisites
 - .NET SDK (10.0+)
-- SQL Server LocalDB (or another SQL Server instance)
+- PostgreSQL (local install, Docker, or point at a remote instance - e.g. the same free Render Postgres used in production)
 - Python 3.11+
 - Node.js 18+
 
@@ -137,15 +137,18 @@ dotnet restore
 ```
 
 Configure `appsettings.json` (or user secrets) with:
-- `ConnectionStrings:DefaultConnection` - your SQL Server connection string
+- `ConnectionStrings:DefaultConnection` - your PostgreSQL connection string, either the
+  classic keyword/value form (`Host=localhost;Port=5432;Database=SupportTicketDb;Username=...;Password=...`)
+  or a `postgres://` URI (Render hands these out directly) - `Program.cs` normalizes
+  either form automatically.
 - `Jwt:Key` / `Jwt:Issuer` / `Jwt:Audience` - JWT signing config
 - `SeedAdmin:Email` / `SeedAdmin:Password` - seeded Admin account, created on first run
 - `RagService:BaseUrl` - URL of the Python AI service (default `http://localhost:8001`)
 
-Apply migrations and run:
+Migrations apply automatically on startup (`Database.MigrateAsync()` in `Program.cs`), so
+just run:
 
 ```bash
-dotnet ef database update
 dotnet run
 ```
 
@@ -241,44 +244,37 @@ its own answer. Three reasons:
    reported with just as much apparent confidence as a well-grounded one, since the
    "confidence" is itself just more generated text, not a measured probability.
 
-## Deployment (Render + a self-hosted SQL Server)
+## Deployment (Render, all-in)
 
 This repo includes `render.yaml` (a Render Blueprint) plus a `Dockerfile` in both
 `SupportTicketSystem/` and `SupportTicketAI/`, so the backend and AI service deploy as
-Docker web services and the frontend deploys as a static site. Render's free tier
-doesn't offer managed SQL Server, so the database is assumed to be a SQL Server
-instance you host and expose yourself (a VPS, a home server with port forwarding, etc.)
-- everything else runs on Render.
+Docker web services, the frontend deploys as a static site, and the database is a free
+Render-managed PostgreSQL instance - no self-hosting, no firewall/port-forwarding setup,
+everything in one provider.
 
 ### 0. Push this repo to GitHub
 Render deploys from a connected Git provider. Create a repo on GitHub and push this
 one to it (`git remote add origin ...`, `git push -u origin main`).
 
-### 1. Make sure your SQL Server is reachable from the internet
-- SQL Server must be listening on TCP (enable **TCP/IP** in SQL Server Configuration
-  Manager if it's currently LocalDB/named-pipes only), with a firewall rule allowing
-  inbound `1433` (or whatever port you expose).
-- Render's free web services don't have a static outbound IP, so you generally can't
-  restrict the firewall to Render's IP range - plan your SQL login's password strength
-  accordingly, and consider `TrustServerCertificate=True` if you don't have a signed
-  cert on the SQL Server endpoint.
-- Your connection string will look like:
-  `Server=tcp:your-host,1433;Database=SupportTicketDb;User Id=...;Password=...;TrustServerCertificate=True;`
-
-### 2. Create the three services on Render
-Easiest: **New > Blueprint**, point it at your GitHub repo, and Render reads
-`render.yaml` and proposes all three services. Otherwise, create each manually:
+### 1. Create everything via the Blueprint
+Go to **New > Blueprint** in the Render dashboard, point it at your GitHub repo, and
+Render reads `render.yaml` and proposes all four resources at once: the Postgres
+database, both Docker web services, and the static frontend. Otherwise, create each
+manually:
+- `support-ticket-db`: free Postgres instance.
 - `support-ticket-ai`: Docker web service, Dockerfile at `SupportTicketAI/Dockerfile`, root `SupportTicketAI/`.
 - `support-ticket-backend`: Docker web service, Dockerfile at `SupportTicketSystem/Dockerfile`, root `SupportTicketSystem/`.
 - `support-ticket-frontend`: Static site, build command `cd support-ticket-frontend && npm install && npm run build`, publish path `support-ticket-frontend/dist`.
 
-### 3. Set environment variables
+### 2. Set environment variables
 On `support-ticket-ai`:
 - `GROQ_API_KEY`, `GEMINI_API_KEY` - your real keys (never commit these).
 - `AUTO_RESOLVE_THRESHOLD` - `0.9` (or your tuned value).
 
 On `support-ticket-backend`:
-- `ConnectionStrings__DefaultConnection` - from step 1.
+- `ConnectionStrings__DefaultConnection` - via the Blueprint's `fromDatabase` wiring,
+  this is filled in automatically from `support-ticket-db`'s connection string; no
+  manual step needed.
 - `Jwt__Key` - a real random secret (e.g. `openssl rand -base64 48`), **not** the
   placeholder in `appsettings.json`.
 - `Jwt__Issuer` / `Jwt__Audience` - can keep the defaults.
@@ -295,20 +291,22 @@ On `support-ticket-frontend`:
   at **build** time, so set it before the first build, or trigger a redeploy after
   changing it.
 
-### 4. Deploy order
+### 3. Deploy order
 Backend and frontend each need the other's URL, which only exists after that service
-is first created - so expect to: create all three, fill in what you can, deploy, then
-go back and fill in `RagService__BaseUrl` / `Cors__FrontendOrigin` / `VITE_API_BASE_URL`
-once you have the real URLs, then redeploy the backend and frontend.
+is first created - so expect to: create all four resources, fill in what you can,
+deploy, then go back and fill in `RagService__BaseUrl` / `Cors__FrontendOrigin` /
+`VITE_API_BASE_URL` once you have the real URLs, then redeploy the backend and frontend.
+The database schema is created automatically on the backend's first boot
+(`Database.MigrateAsync()` in `Program.cs`) - no separate migration step.
 
 ### Known limitations of this setup
 - **Free web services spin down after inactivity** and cold-start on the next request
   (can take 30-60s) - acceptable for a demo, not for production SLAs.
+- **Free Render Postgres instances expire after 30 days** unless upgraded to a paid
+  plan - fine for a demo/portfolio project, not for anything long-lived.
 - **The AI service's FAISS knowledge-base data is not persisted** on Render's free
   tier (no free persistent disk) - ingested documents are lost on redeploy/restart.
   A paid persistent disk, or moving `kb_data/` to external storage, would fix this.
-- **No static outbound IP** on free Render services, so you can't IP-allowlist Render
-  in your SQL Server's firewall.
 
 ## Notable Limitations / Future Work
 
