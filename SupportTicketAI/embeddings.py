@@ -9,7 +9,11 @@ from dotenv import load_dotenv
 # become available if only main.py called load_dotenv().
 load_dotenv()
 
-API_KEY = os.environ["GEMINI_API_KEY"]
+# Optional at startup: without it the service still boots and everything
+# that doesn't need embeddings (classification, insights summaries, KB
+# document list/delete) keeps working - only ingest/retrieve/RAG-generate
+# fail, with a clear error from get_embedding() below.
+API_KEY = os.environ.get("GEMINI_API_KEY")
 EMBED_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     "gemini-embedding-001:embedContent"
@@ -30,6 +34,10 @@ class EmbeddingError(Exception):
 
 
 async def get_embedding(text: str) -> list[float]:
+    if not API_KEY:
+        raise EmbeddingError(
+            "Embedding provider is not configured (GEMINI_API_KEY is not set)"
+        )
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
